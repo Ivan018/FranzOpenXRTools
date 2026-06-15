@@ -1,5 +1,14 @@
 {
   "dependencies": {
+    "com.bytedance.ide.trae": {
+      "version": "https://github.com/Pico-Developer/TRAE-Editor-Unity.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.test-framework": "1.1.33"
+      },
+      "hash": "caa0bd4c3fe31238dc50f01209e3fef331a6c33a"
+    },
     "com.unity.burst": {
       "version": "1.8.29",
       "depth": 2,
@@ -275,7 +284,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.hands": {
-      "version": "1.7.3",
+      "version": "1.8.0",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -288,11 +297,11 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.interaction.toolkit": {
-      "version": "3.4.1",
+      "version": "3.5.1",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.unity.ugui": "1.0.0",
+        "com.unity.ugui": "2.0.0",
         "com.unity.modules.xr": "1.0.0",
         "com.unity.inputsystem": "1.8.1",
         "com.unity.mathematics": "1.2.6",
@@ -314,7 +323,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.management": {
-      "version": "4.5.4",
+      "version": "4.6.0",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -339,7 +348,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.openxr": {
-      "version": "1.16.1",
+      "version": "1.17.1",
       "depth": 0,
       "source": "registry",
       "dependencies": {
