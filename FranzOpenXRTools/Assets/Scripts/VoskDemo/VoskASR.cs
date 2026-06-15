@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Unity.Profiling;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace Vosk.APIs
 {
@@ -100,6 +101,11 @@ namespace Vosk.APIs
 
             _modelPath = Path.Combine(Application.streamingAssetsPath, ModelName);
 
+#if UNITY_ANDROID && !UNITY_EDITOR
+            _modelPath = Path.Combine(Application.persistentDataPath, ModelName);
+            yield return ExtractModelIfNeeded();
+#endif
+
 #if UNITY_EDITOR
             Debug.Log(_modelPath);
 #endif
@@ -184,6 +190,99 @@ namespace Vosk.APIs
         {
             while (Microphone.devices.Length <= 0)
                 yield return null;
+        }
+
+        private static readonly string[] ModelFiles =
+        {
+            "am/final.mdl",
+            "conf/mfcc.conf",
+            "conf/model.conf",
+            "graph/phones/word_boundary.int",
+            "graph/Gr.fst",
+            "graph/HCLr.fst",
+            "graph/disambig_tid.int",
+            "ivector/final.dubm",
+            "ivector/final.ie",
+            "ivector/final.mat",
+            "ivector/global_cmvn.stats",
+            "ivector/online_cmvn.conf",
+            "ivector/splice.conf",
+            "README"
+        };
+
+        /// <summary>
+        /// Extract model from StreamingAssets to persistentDataPath if not already extracted
+        /// </summary>
+        private static IEnumerator ExtractModelIfNeeded()
+        {
+            string sourcePath = Path.Combine(Application.streamingAssetsPath, ModelName).Replace("\\", "/");
+            string targetPath = Path.Combine(Application.persistentDataPath, ModelName);
+
+            string markerFile = Path.Combine(targetPath, ".extracted");
+            if (File.Exists(markerFile))
+            {
+                Debug.Log($"[Vosk] Model already extracted to: {targetPath}");
+                yield break;
+            }
+
+            Debug.Log($"[Vosk] Extracting model from {sourcePath} to {targetPath}");
+            OnStatusUpdated?.Invoke("Extracting model...");
+
+            Directory.CreateDirectory(targetPath);
+            Directory.CreateDirectory(Path.Combine(targetPath, "am"));
+            Directory.CreateDirectory(Path.Combine(targetPath, "conf"));
+            Directory.CreateDirectory(Path.Combine(targetPath, "graph", "phones"));
+            Directory.CreateDirectory(Path.Combine(targetPath, "ivector"));
+
+            bool extractionFailed = false;
+            foreach (string relativePath in ModelFiles)
+            {
+                string sourceFilePath = sourcePath + "/" + relativePath;
+                string targetFilePath = Path.Combine(targetPath, relativePath);
+
+                using (UnityWebRequest request = UnityWebRequest.Get(sourceFilePath))
+                {
+#if UNITY_ANDROID && !UNITY_EDITOR
+                    request.SetRequestHeader("Accept-Encoding", "identity");
+#endif
+                    request.SendWebRequest();
+
+                    while (!request.isDone)
+                        yield return null;
+
+                    if (request.result == UnityWebRequest.Result.Success)
+                    {
+                        byte[] data = request.downloadHandler.data;
+                        if (data != null && data.Length > 0)
+                        {
+                            File.WriteAllBytes(targetFilePath, data);
+                            Debug.Log($"[Vosk] Extracted: {relativePath} ({data.Length} bytes)");
+                        }
+                        else
+                        {
+                            File.WriteAllBytes(targetFilePath, Array.Empty<byte>());
+                            Debug.Log($"[Vosk] Extracted empty file: {relativePath}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogError($"[Vosk] Failed to extract {relativePath}: {request.error} (HTTP: {(int)request.responseCode})");
+                        extractionFailed = true;
+                    }
+                }
+            }
+
+            if (!extractionFailed)
+            {
+                File.WriteAllText(markerFile, DateTime.Now.ToString());
+                Debug.Log($"[Vosk] Model extraction complete");
+                OnStatusUpdated?.Invoke("Model extracted");
+            }
+            else
+            {
+                Debug.LogError("[Vosk] Model extraction failed, will retry on next launch");
+                OnStatusUpdated?.Invoke("Model extraction failed");
+            }
         }
 
         /// <summary>

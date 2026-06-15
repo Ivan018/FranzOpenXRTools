@@ -8,11 +8,7 @@ public class VoskDemo : MonoBehaviour
 {
     [Header("Settings")]
     [Tooltip("Name of the Model")]
-#if UNITY_EDITOR
     private const string ModelName = "vosk-model-small-cn-0.22";
-#else
-    private const string ModelName = "vosk-model-cn-0.22";
-#endif
 
     [Tooltip("Should the recognizer start automatically")]
     [SerializeField]
