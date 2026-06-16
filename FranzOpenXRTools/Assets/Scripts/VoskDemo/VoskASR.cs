@@ -203,7 +203,6 @@ namespace Vosk.APIs
             "graph/disambig_tid.int",
             "ivector/final.dubm",
             "ivector/final.ie",
-            "ivector/final.mat",
             "ivector/global_cmvn.stats",
             "ivector/online_cmvn.conf",
             "ivector/splice.conf",

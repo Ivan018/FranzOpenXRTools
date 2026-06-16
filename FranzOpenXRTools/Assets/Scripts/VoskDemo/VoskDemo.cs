@@ -1,7 +1,8 @@
 using Newtonsoft.Json;
 using System.Collections.Generic;
-using TMPro;
+using System.Text;
 using UnityEngine;
+using UnityEngine.UI;
 using Vosk.APIs;
 
 public class VoskDemo : MonoBehaviour
@@ -26,9 +27,18 @@ public class VoskDemo : MonoBehaviour
     [SerializeField]
     private List<string> KeyPhrases = new List<string>();
 
+    [Tooltip("Maximum number of poetry match results to display")]
+    [SerializeField]
+    private int MaxPoetryResults = 5;
+
     [Header("UI")]
     [SerializeField]
-    private TMP_Text ResultText;
+    private Text ResultText;
+
+    [SerializeField]
+    private Text PoetryResultText;
+
+    private PoetryManager m_poetryManager;
 
     private void OnEnable()
     {
@@ -39,13 +49,21 @@ public class VoskDemo : MonoBehaviour
     {
         VoskASR.OnTranscriptionResult -= OnTranscriptionResult;
     }
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private void Start()
     {
         for (int i = 0; i < KeyPhrases.Count; i++)
+        {
             KeyPhrases[i] = KeyPhrases[i].Trim();
+        }
 
         VoskASR.Init(this, ModelName, AutoStart, MaxAlternatives, microphoneIndex, KeyPhrases);
+        
+        m_poetryManager = FindObjectOfType<PoetryManager>();
+        if (m_poetryManager == null)
+        {
+            Debug.LogWarning("PoetryManager not found in scene. Creating one.");
+            m_poetryManager = gameObject.AddComponent<PoetryManager>();
+        }
     }
 
     // Update is called once per frame
@@ -61,8 +79,56 @@ public class VoskDemo : MonoBehaviour
 #endif
 
         RecognitionResult resultJson = JsonConvert.DeserializeObject<RecognitionResult>(obj);
-        //ResultText.text += StringFormatter.RemoveSpaces(StringFormatter.ChineseUtils.ToTrad(resultJson.alternatives[0].text).Replace("[unk]", " "));
-        ResultText.text += resultJson.alternatives[0].text.Replace(" ", "");
+        string transcribedTextUnk = resultJson.alternatives[0].text.Replace("[unk]", " ");
+        string transcribedText = transcribedTextUnk.Replace(" ", "");
+        ResultText.text += transcribedText;
+        Debug.Log(transcribedText);
+        if (transcribedText.Length >= 4)
+        {
+            PerformPoetryMatch(transcribedText);
+        }
+    }
+
+    private void PerformPoetryMatch(string query)
+    {
+        if (m_poetryManager == null || !m_poetryManager.isLoaded)
+        {
+            return;
+        }
+
+        List<PoetryMatchResult> results = m_poetryManager.FuzzyMatch(query, MaxPoetryResults);
+        
+        if (results.Count > 0)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("<color=green>诗词匹配结果：</color>");
+            
+            foreach (PoetryMatchResult result in results)
+            {
+                sb.AppendLine($"<color=yellow>《{result.title}》</color>");
+                sb.AppendLine($"朝代：{result.dynasty}　作者：{result.author}");
+                sb.AppendLine($"匹配诗句：{result.matchedLine}");
+                sb.AppendLine($"匹配句数：{result.matchedLineCount}句");
+                
+                if (result.matchedLines != null && result.matchedLines.Count > 0)
+                {
+                    sb.AppendLine($"匹配的诗句：");
+                    foreach (string line in result.matchedLines)
+                    {
+                        sb.AppendLine($"　{line}");
+                    }
+                }
+                
+                sb.AppendLine($"全诗：{result.fullContent}");
+                sb.AppendLine();
+            }
+            
+            PoetryResultText.text = sb.ToString();
+        }
+        else
+        {
+            PoetryResultText.text = query+"_未找到匹配的诗词";
+        }
     }
 
     private struct RecognitionResult
